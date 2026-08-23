@@ -5,3 +5,7 @@ build/
 *.hex
 *.map
 .DS_Store
+
+# local-only AI/tooling config
+AGENTS.md
+opencode.json
