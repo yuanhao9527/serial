@@ -1,0 +1,7 @@
+build/
+*.o
+*.axf
+*.bin
+*.hex
+*.map
+.DS_Store
