@@ -25,15 +25,15 @@ public:
 
 protected:
     /* 子类必须实现：启动一次异步发送，成功返回 true */
-    virtual bool writeHardware(const uint8_t* data, uint16_t len) = 0;
+    virtual bool startTransmit(const uint8_t* data, uint16_t len) = 0;
     /* 子类必须实现：启动接收（循环 DMA / 中断 等） */
-    virtual void startReceiveHardware(void) = 0;
-    /* 子类可选：错误后重启接收（默认调用 startReceiveHardware） */
-    virtual void restartReceiveHardware(void) { startReceiveHardware(); }
+    virtual void startReceive(void) = 0;
+    /* 子类可选：错误后重启接收（默认调用 startReceive） */
+    virtual void restartReceive(void) { startReceive(); }
 
     /* 子类必须实现：进入 / 退出临界区（保护环形缓冲的并发访问） */
-    virtual void enterCritical(void) = 0;
-    virtual void exitCritical(void) = 0;
+    virtual void lockCritical(void) = 0;
+    virtual void unlockCritical(void) = 0;
 
 private:
     uint8_t*  rxBuf_;

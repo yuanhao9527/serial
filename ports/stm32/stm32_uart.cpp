@@ -24,24 +24,24 @@ Stm32Uart* Stm32Uart::find(UART_HandleTypeDef* huart) {
     return nullptr;
 }
 
-void Stm32Uart::startReceiveHardware(void) {
+void Stm32Uart::startReceive(void) {
     HAL_UARTEx_ReceiveToIdle_DMA(huart_, rxBuf_, STM32_UART_RX_SIZE);
     __HAL_UART_ENABLE_IT(huart_, UART_IT_IDLE);
 }
 
-void Stm32Uart::restartReceiveHardware(void) {
+void Stm32Uart::restartReceive(void) {
     __HAL_UART_DISABLE_IT(huart_, UART_IT_IDLE);
     HAL_UART_Abort(huart_);
     HAL_UARTEx_ReceiveToIdle_DMA(huart_, rxBuf_, STM32_UART_RX_SIZE);
     __HAL_UART_ENABLE_IT(huart_, UART_IT_IDLE);
 }
 
-bool Stm32Uart::writeHardware(const uint8_t* data, uint16_t len) {
+bool Stm32Uart::startTransmit(const uint8_t* data, uint16_t len) {
     return (HAL_UART_Transmit_DMA(huart_, (uint8_t*)data, len) == HAL_OK);
 }
 
-void Stm32Uart::enterCritical(void) { __disable_irq(); }
-void Stm32Uart::exitCritical(void)  { __enable_irq();  }
+void Stm32Uart::lockCritical(void) { __disable_irq(); }
+void Stm32Uart::unlockCritical(void)  { __enable_irq();  }
 
 /* ===================== HAL 全局回调 ===================== */
 extern "C" {

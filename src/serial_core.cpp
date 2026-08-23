@@ -9,7 +9,7 @@ BufferedSerial::BufferedSerial(uint8_t* rxBuf, uint16_t rxSize,
 }
 
 void BufferedSerial::init(void) {
-    startReceiveHardware();
+    startReceive();
 }
 
 /* 从 TX 环形缓冲取一段，交给硬件发送 */
@@ -24,7 +24,7 @@ void BufferedSerial::pumpTx(void) {
 
     txBusy_   = 1;
     lastTxLen_ = len;
-    if (!writeHardware(&txBuf_[tail], len)) {
+    if (!startTransmit(&txBuf_[tail], len)) {
         txBusy_ = 0;                                /* 启动失败：留待下次 */
     }
 }
@@ -40,12 +40,12 @@ int BufferedSerial::send(const uint8_t* data, uint16_t len) {
     }
     if (len == 0) return 0;
 
-    enterCritical();
+    lockCritical();
     for (uint16_t i = 0; i < len; ++i) {
         txBuf_[txHead_] = data[i];
         txHead_ = (txHead_ + 1) % txSize_;
     }
-    exitCritical();
+    unlockCritical();
 
     pumpTx();
     return (int)len;
@@ -66,5 +66,5 @@ void BufferedSerial::onRxData(uint8_t* data, uint16_t len) {
 }
 
 void BufferedSerial::onError(void) {
-    restartReceiveHardware();
+    restartReceive();
 }

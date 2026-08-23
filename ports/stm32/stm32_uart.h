@@ -30,11 +30,11 @@ public:
     static Stm32Uart* find(UART_HandleTypeDef* huart);
 
 protected:
-    bool writeHardware(const uint8_t* data, uint16_t len) override;
-    void startReceiveHardware(void) override;
-    void restartReceiveHardware(void) override;
-    void enterCritical(void) override;
-    void exitCritical(void) override;
+    bool startTransmit(const uint8_t* data, uint16_t len) override;
+    void startReceive(void) override;
+    void restartReceive(void) override;
+    void lockCritical(void) override;
+    void unlockCritical(void) override;
 
 private:
     UART_HandleTypeDef* huart_;
