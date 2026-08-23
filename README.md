@@ -77,53 +77,48 @@ extern "C" int fputc(int ch, FILE* f) {
 
 ```mermaid
 flowchart TB
-    subgraph L1["① 应用层"]
-        App["应用逻辑 / 协议解析<br/>只持有 ISerial*，通过 ISerial& 交互"]
+    subgraph L1["1 应用层"]
+        App["应用逻辑 / 协议解析<br/>只持有 ISerial 指针，通过 ISerial 引用交互"]
     end
-    subgraph L2["② 接口层（平台无关）"]
+    subgraph L2["2 接口层（平台无关）"]
         I["ISerial<br/>init / send / onData / setRxCallback"]
     end
-    subgraph L3["③ 核心层（硬件无关，仅 &lt;cstdint&gt;）"]
-        C["BufferedSerial : public ISerial<br/>TX 环形缓冲 + RX 分发<br/>pumpTx / onTxComplete / onRxData / onError<br/>定义 4 个纯虚钩子"]
+    subgraph L3["3 核心层（硬件无关，仅 cstdint）"]
+        C["BufferedSerial 继承 ISerial<br/>TX 环形缓冲 + RX 分发<br/>pumpTx / onTxComplete / onRxData / onError<br/>定义 4 个纯虚钩子"]
     end
-    subgraph L4["④ 端口层（硬件相关）"]
-        P["XxxUart : public BufferedSerial<br/>startTransmit / startReceive<br/>lockCritical / unlockCritical"]
+    subgraph L4["4 端口层（硬件相关）"]
+        P["XxxUart 继承 BufferedSerial<br/>startTransmit / startReceive<br/>lockCritical / unlockCritical"]
     end
-    subgraph L5["⑤ 硬件 / HAL"]
+    subgraph L5["5 硬件 / HAL"]
         H["UART / DMA / 中断"]
     end
 
-    %% 静态分层 / 依赖
     App -->|使用| I
     C -. 实现 .-> I
     P -->|继承并实现钩子| C
     P -->|调用底层 API| H
 
-    %% ① 初始化
-    App -->|init()| C
-    C -->|startReceive()| P
-    P -->|ReceiveToIdle_DMA()| H
+    App -->|init| C
+    C -->|startReceive| P
+    P -->|ReceiveToIdle_DMA| H
 
-    %% ② 发送（非阻塞）
-    App -->|send() 非阻塞| C
+    App -->|send 非阻塞| C
     C -->|写 TX 环形缓冲 lock/unlockCritical| C
-    C -->|pumpTx() + startTransmit()| P
-    P -->|Transmit_DMA()| H
+    C -->|pumpTx + startTransmit| P
+    P -->|Transmit_DMA| H
     H -. 发送完成中断 .-> P
-    P -->|onTxComplete()| C
-    C -->|pumpTx() 继续剩余| C
+    P -->|onTxComplete| C
+    C -->|pumpTx 继续剩余| C
 
-    %% ③ 接收（一帧）
-    H -. 空闲线 / 收到一帧 .-> P
-    P -->|onRxData()| C
-    C -->|onData()| C
-    C -->|rxCb_(*this,data,len)| App
-    App -. send() 回显 .-> C
+    H -. 空闲线 或 收到一帧 .-> P
+    P -->|onRxData| C
+    C -->|onData| C
+    C -->|rxCb 回调| App
+    App -. send 回显 .-> C
 
-    %% ④ 出错
     H -. 错误中断 .-> P
-    P -->|onError()| C
-    C -->|restartReceive()| P
+    P -->|onError| C
+    C -->|restartReceive| P
     P -->|重启 DMA 接收| H
 ```
 
