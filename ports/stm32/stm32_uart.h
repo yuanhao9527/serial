@@ -26,6 +26,9 @@ public:
     /* HAL 全局回调入口（公开以便 extern "C" 回调调用） */
     void rxEvent(uint16_t size) { onRxData(rxBuf_, size); }
 
+    /* 供全局 HAL 回调按外设反查实例 */
+    static Stm32Uart* find(UART_HandleTypeDef* huart);
+
 protected:
     bool writeHardware(const uint8_t* data, uint16_t len) override;
     void startReceiveHardware(void) override;
@@ -39,7 +42,6 @@ private:
     uint8_t  txBuf_[STM32_UART_TX_SIZE];
 
     void reg(void);
-    static Stm32Uart* find(UART_HandleTypeDef* huart);
     static Stm32Uart* registry_[STM32_UART_MAX];
     static int   regCount_;
 };
