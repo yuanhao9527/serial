@@ -21,8 +21,11 @@
 ISerial* g_serial = nullptr;
 Stm32Uart u1(&huart1);          /* 唯一的板级具体类型，其余全用 ISerial */
 
-/* 应用层回调：只认 ISerial&，不碰 UART_HandleTypeDef / HAL */
-void onRx(ISerial& ser, uint8_t* data, uint16_t len) {
+/* 应用层回调：只认 ISerial&，不碰 UART_HandleTypeDef / HAL。
+ * frameEnd=false 表示缓冲压力拆分（非空闲线帧边界），
+ * 帧式协议可在 false 时先累积、true 时整帧解析。 */
+void onRx(ISerial& ser, uint8_t* data, uint16_t len, bool frameEnd) {
+    (void)frameEnd;
     ser.send(data, len);        /* 示例直接回显 */
 }
 

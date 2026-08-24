@@ -28,7 +28,9 @@ examples/
 ## 核心做了什么（全硬件无关）
 - 接收：由硬件层在“收到一帧”时调用 `onRxData()`，核心再转给 `ISerial::onData`
   （默认转发给应用回调，未设回调则原样回发）。
-- 发送：`send()` 非阻塞，写入 TX 环形缓冲，再由 `pumpTx()` 驱动硬件发送。
+- 发送：`send()` 非阻塞，写入 TX 环形缓冲，再由 `pumpTx()` 驱动硬件发送；
+  TX 缓冲空间不足时整帧拒绝（返回 -1），不会发出撕裂的半帧。
+  `pumpTx()` 的「查忙 -> 启动」全程在临界区内，可被线程与中断安全并发调用。
 - 四个硬件钩子由子类实现：`startTransmit` / `startReceive` / `lockCritical` / `unlockCritical`。
 
 ## 用法（应用层只碰接口）
@@ -39,8 +41,11 @@ examples/
 ISerial* g_serial = nullptr;
 XxxUart u1(...);         // 唯一出现具体类名（板级 glue）
 
-void onRx(ISerial& ser, uint8_t* data, uint16_t len) {
-    ser.send(data, len);  // 应用层只认 ISerial&
+void onRx(ISerial& ser, uint8_t* data, uint16_t len, bool frameEnd) {
+    if (frameEnd) { /* 空闲线收尾：完整帧，直接解析 */
+    } else {        /* 缓冲压力拆分（HT/TC）：先累积，等 frameEnd 再解析 */
+    }
+    ser.send(data, len);  /* 应用层只认 ISerial& */
 }
 
 u1.init();                // 启动接收
@@ -70,7 +75,13 @@ extern "C" int fputc(int ch, FILE* f) {
 - 对应平台的 MCU HAL / SDK。
 - C++ 工程。
 - 编译时加入：`include/`、`src/`、`ports/<平台>/`，并配好底层头文件路径与芯片宏。
-- 接收宜用 DMA 循环模式，发送用 DMA 单次模式（具体由端口决定）。
+- 接收推荐 DMA 循环模式（端口会处理回卷拆帧）；普通模式也可用，
+  STM32 端口在每帧后自动重启接收。发送用 DMA 单次模式。
+- 帧边界：回调第 4 参 `frameEnd` 区分空闲线完整帧与缓冲压力拆分
+  （依赖 HAL `RxEventType`，旧版 HAL 一律按完整帧上报）。
+- 溢出防护：HT/TC 保证回调间隔 ≤ 半缓冲；写位置越过保留区
+  （默认 RX_SIZE/4）即判定回调饿死，丢弃会话重启并计入 `rxOverruns()`。
+  RX_SIZE 建议 ≥ 2×最大帧长。
 - 底层“发送完成 / 收到一帧 / 出错”回调由本库内部接管，无需在用户文件里重复实现。
 
 ## 架构与调用流程图
@@ -156,5 +167,25 @@ hello serial-halping
 - `examples/stm32/`：基于 `ports/stm32` 端口的 MCU 板级集成示例（见其 README）。
 - `ports/stm32/stm32_uart.h/.cpp`：某 MCU（STM32 HAL）的端口参考实现，展示
   如何落地 4 个钩子与接管底层中断回调；需用对应芯片 HAL 工程编译。
+
+## 测试（无需硬件）
+
+`tests/` 内置冒烟测试：核心层用 Mock 端口验证 TX 环形缓冲 / RX 分发 /
+整帧拒绝 / 回卷流完整性；STM32 端口用假 HAL 头（`tests/fake_hal/`）在 PC 上
+覆盖回卷拆帧、普通模式自动重启、错误恢复与临界区嵌套。
+
+```bash
+# 核心层 + host 端口
+g++ -Wall -Wextra -Iinclude -Isrc -Iports/host \
+    src/serial_core.cpp ports/host/host_uart.cpp tests/test_core.cpp \
+    -o test_core && ./test_core
+
+# STM32 端口（假 HAL）
+g++ -Wall -Wextra -Iinclude -Isrc -Iports/stm32 -Itests/fake_hal \
+    src/serial_core.cpp ports/stm32/stm32_uart.cpp tests/test_stm32.cpp \
+    -o test_stm32 && ./test_stm32
+```
+
+两套全部输出 `ALL PASS` 即通过；改动 `src/`、`ports/` 后建议回归。
 
 更多说明见 `examples/README.md`。

@@ -19,8 +19,9 @@ ISerial* g_serial = nullptr;
 HostUart u1;                /* 唯一的板级具体类型，其余全用 ISerial */
 
 /* 应用层回调：只认 ISerial&，不碰任何具体硬件 / 端口 */
-void onRx(ISerial& ser, uint8_t* data, uint16_t len) {
-    printf("app received %u bytes: ", (unsigned)len);
+void onRx(ISerial& ser, uint8_t* data, uint16_t len, bool frameEnd) {
+    printf("app received %u bytes (frameEnd=%d): ",
+           (unsigned)len, (int)frameEnd);
     fwrite(data, 1, len, stdout);
     printf("\n");
     ser.send(data, len);   /* 回显 */

@@ -16,11 +16,13 @@ public:
                    uint8_t* txBuf, uint16_t txSize);
 
     void init(void) override;
+    /* 非阻塞发送：成功返回 len；TX 缓冲空间不足时整帧拒绝，返回 -1 */
     int  send(const uint8_t* data, uint16_t len) override;
 
     /* ---- 以下由硬件层在相应事件时调用（应用层勿直接调） ---- */
     void onTxComplete(void);                /* 一次异步发送结束 */
-    void onRxData(uint8_t* data, uint16_t len); /* 收到一帧 */
+    /* 收到一段数据；frameEnd=false 表示缓冲压力拆分（非空闲线帧边界） */
+    void onRxData(uint8_t* data, uint16_t len, bool frameEnd = true);
     void onError(void);                     /* 接收错误 */
 
 protected:

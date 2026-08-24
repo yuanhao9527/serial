@@ -15,7 +15,7 @@ public:
     HostUart();
 
     /* 模拟「外部收到一帧」：供 demo 的 main 调用，触发 RX 回调 */
-    void simulateRx(const uint8_t* data, uint16_t len);
+    void simulateRx(const uint8_t* data, uint16_t len, bool frameEnd = true);
 
 protected:
     bool startTransmit(const uint8_t* data, uint16_t len) override;

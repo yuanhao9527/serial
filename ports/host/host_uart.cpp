@@ -7,10 +7,10 @@ HostUart::HostUart()
 {
 }
 
-void HostUart::simulateRx(const uint8_t* data, uint16_t len) {
+void HostUart::simulateRx(const uint8_t* data, uint16_t len, bool frameEnd) {
     if (len > 0 && len <= sizeof(rxScratch_)) {
         memcpy(rxScratch_, data, len);
-        onRxData(rxScratch_, len);
+        onRxData(rxScratch_, len, frameEnd);
     }
 }
 
